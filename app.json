@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "GI Diary",
+    "slug": "ultragi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ultragi",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1E88E5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ultragi.gidiary"
+    },
+    "android": {
+      "package": "com.ultragi.gidiary",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#1E88E5"
+      },
+      "kotlinVersion": "1.9.25",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.VIBRATE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "web": {},
+    "plugins": [
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-secure-store",
+      [
+        "expo-task-manager",
+        {
+          "backgroundModes": [
+            "location",
+            "fetch"
+          ]
+        }
+      ],
+      [
+        "expo-background-fetch",
+        {
+          "android": {
+            "minimumInterval": 900
+          }
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dd041406-ae80-4f75-9490-06a6231a57c1"
+      }
+    },
+    "owner": "tabodsvik"
+  }
+}

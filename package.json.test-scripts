@@ -1,0 +1,96 @@
+/**
+ * Add these scripts to your package.json
+ *
+ * Copy and paste into the "scripts" section of package.json
+ */
+
+{
+  "scripts": {
+    // ========================================================================
+    // UNIT TESTS (Jest)
+    // ========================================================================
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:coverage:watch": "jest --coverage --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+
+    // Test specific files/patterns
+    "test:services": "jest src/services",
+    "test:components": "jest src/components",
+    "test:hooks": "jest src/hooks",
+
+    // Test specific epics
+    "test:epic4": "jest fuelPlanner",
+    "test:epic5": "jest sessionRecovery",
+    "test:epic7": "jest recommendations",
+
+    // Update snapshots
+    "test:update-snapshots": "jest --updateSnapshot",
+
+    // ========================================================================
+    // E2E TESTS (Detox)
+    // ========================================================================
+
+    // Android
+    "e2e:build:android": "detox build --configuration android.emu.debug",
+    "e2e:test:android": "detox test --configuration android.emu.debug",
+    "e2e:test:android:release": "detox test --configuration android.emu.release",
+
+    // Android - attached device
+    "e2e:build:android:device": "detox build --configuration android.att.debug",
+    "e2e:test:android:device": "detox test --configuration android.att.debug",
+
+    // iOS (future)
+    "e2e:build:ios": "detox build --configuration ios.sim.debug",
+    "e2e:test:ios": "detox test --configuration ios.sim.debug",
+
+    // Combined E2E workflow
+    "e2e": "npm run e2e:build:android && npm run e2e:test:android",
+
+    // Specific E2E test suites
+    "e2e:epic4": "detox test e2e/epic4-planning.e2e.ts --configuration android.emu.debug",
+    "e2e:epic5": "detox test e2e/epic5-session.e2e.ts --configuration android.emu.debug",
+
+    // ========================================================================
+    // TEST DATA MANAGEMENT
+    // ========================================================================
+    "test-data:setup": "ts-node scripts/setupTestData.ts",
+    "test-data:clear": "ts-node scripts/clearTestData.ts",
+    "test-data:inspect": "ts-node scripts/inspectTestData.ts",
+    "test-data:reset": "npm run test-data:clear && npm run test-data:setup",
+
+    // ========================================================================
+    // LINTING & TYPE CHECKING
+    // ========================================================================
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+
+    // ========================================================================
+    // COMBINED WORKFLOWS
+    // ========================================================================
+
+    // Pre-commit checks
+    "pre-commit": "npm run lint && npm run type-check && npm run test",
+
+    // Full test suite
+    "test:all": "npm run lint && npm run type-check && npm run test:coverage && npm run e2e",
+
+    // CI/CD pipeline
+    "ci": "npm run lint && npm run type-check && npm run test:ci",
+
+    // ========================================================================
+    // DEVELOPMENT HELPERS
+    // ========================================================================
+
+    // Clear Jest cache (useful when tests behave unexpectedly)
+    "test:clear-cache": "jest --clearCache",
+
+    // Debug tests
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+
+    // Performance profiling
+    "test:profile": "jest --logHeapUsage --maxWorkers=1"
+  }
+}
