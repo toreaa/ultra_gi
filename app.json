@@ -41,23 +41,6 @@
       "expo-sqlite",
       "expo-notifications",
       "expo-secure-store",
-      [
-        "expo-task-manager",
-        {
-          "backgroundModes": [
-            "location",
-            "fetch"
-          ]
-        }
-      ],
-      [
-        "expo-background-fetch",
-        {
-          "android": {
-            "minimumInterval": 900
-          }
-        }
-      ],
       "expo-asset",
       "expo-font",
       [
