@@ -58,6 +58,23 @@ export class ProgramRepository {
   }
 
   /**
+   * Get a single program session by ID
+   */
+  static async getSessionById(sessionId: number): Promise<ProgramSession | null> {
+    try {
+      const db = await getDatabase();
+      const session = await db.getFirstAsync<ProgramSession>(
+        `SELECT * FROM program_sessions WHERE id = ?`,
+        [sessionId]
+      );
+      return session || null;
+    } catch (error) {
+      console.error('ProgramRepository.getSessionById failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Start a program for a user
    * Creates a record in user_programs table
    */

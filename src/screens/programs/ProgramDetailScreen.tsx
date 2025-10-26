@@ -113,9 +113,10 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
   };
 
   const handleSessionPress = (sessionId: number) => {
-    // TODO: Navigate to SessionPlan when Epic 4 is implemented
-    setSnackbarMessage('Planlegging kommer i Epic 4');
-    setSnackbarVisible(true);
+    navigation.navigate('SessionPlan', {
+      sessionId,
+      programId,
+    });
   };
 
   const handleStartProgram = async () => {
