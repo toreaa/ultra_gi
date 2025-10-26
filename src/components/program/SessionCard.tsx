@@ -17,6 +17,7 @@ interface SessionCardProps {
   session: ProgramSession;
   sessionNumber: number; // Display number (e.g., "Økt 1")
   status: SessionStatus;
+  completedDate?: string; // ISO date string for completed sessions
   onPress: () => void;
 }
 
@@ -24,8 +25,16 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   session,
   sessionNumber,
   status,
+  completedDate,
   onPress,
 }) => {
+  const formatCompletedDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('nb-NO', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
   const getStatusIcon = (): { name: string; color: string } => {
     switch (status) {
       case 'completed':
@@ -41,7 +50,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   const getStatusText = (): string => {
     switch (status) {
       case 'completed':
-        return 'Fullført';
+        return completedDate ? `Fullført ${formatCompletedDate(completedDate)}` : 'Fullført';
       case 'planned':
         return 'Planlagt';
       case 'not_done':

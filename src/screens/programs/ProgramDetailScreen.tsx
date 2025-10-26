@@ -13,6 +13,7 @@ import { Program, ProgramSession, UserProgram } from '../../types/database';
 import { ProgramRepository } from '../../database/repositories/ProgramRepository';
 import { SessionLogRepository, CompletedSessionData } from '../../database/repositories/SessionLogRepository';
 import { SessionCard, SessionStatus } from '../../components/program/SessionCard';
+import { ProgressBar } from '../../components/program/ProgressBar';
 import { ProgramStackParamList } from '../../types/navigation';
 
 type ProgramDetailScreenProps = NativeStackScreenProps<
@@ -190,11 +191,13 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
         )}
         renderItem={({ item, section }) => {
           const sessionNumber = item.session_number;
+          const completedData = completedSessions.get(item.id);
           return (
             <SessionCard
               session={item}
               sessionNumber={sessionNumber}
               status={getSessionStatus(item.id)}
+              completedDate={completedData?.created_at ?? undefined}
               onPress={() => handleSessionPress(item.id)}
             />
           );
@@ -218,6 +221,43 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
                 </Text>
               )}
             </View>
+
+            {/* Progress Bar */}
+            {userProgram && (
+              <ProgressBar
+                completed={completedSessions.size}
+                total={sessions.length}
+                currentWeek={
+                  sessions.length > 0 && program.duration_weeks > 0
+                    ? Math.min(
+                        Math.max(
+                          1,
+                          Math.ceil(
+                            (completedSessions.size / sessions.length) * program.duration_weeks
+                          )
+                        ),
+                        program.duration_weeks
+                      )
+                    : 1
+                }
+                totalWeeks={program.duration_weeks}
+              />
+            )}
+
+            {/* Completion Button */}
+            {userProgram && completedSessions.size === sessions.length && sessions.length > 0 && (
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setSnackbarMessage('Analyse kommer i Epic 7');
+                  setSnackbarVisible(true);
+                }}
+                style={styles.completionButton}
+                icon="chart-line"
+              >
+                Se resultater
+              </Button>
+            )}
 
             {/* Program Description */}
             {program.description && (
@@ -344,6 +384,11 @@ const styles = StyleSheet.create({
   startButton: {
     marginHorizontal: 16,
     marginBottom: 24,
+  },
+  completionButton: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#4CAF50',
   },
   sessionsHeader: {
     paddingHorizontal: 16,
