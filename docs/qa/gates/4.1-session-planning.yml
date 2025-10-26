@@ -1,0 +1,188 @@
+schema: 1
+story: '4.1'
+story_title: 'Session planning screen (Epic 4 start)'
+gate: PASS
+status_reason: 'Excellent implementation quality (92/100) with full AC coverage (AC1,2,3,5 PASS, AC4 correctly deferred). Clean architecture, proper TypeScript typing, Material Design compliance. Minor: Missing automated tests (consistent with Epic 3 pattern).'
+quality_score: 92
+
+acceptance_criteria:
+  - id: AC1
+    description: 'Bruker kommer til planleggingsskjerm fra program-detaljer (trykk på økt)'
+    status: PASS
+    notes: 'ProgramDetailScreen.handleSessionPress() navigates to SessionPlan screen with sessionId and programId params. Tested: SessionPlanScreen.tsx:115-119'
+
+  - id: AC2
+    description: 'Skjerm viser økt-info: Program + Uke/Økt, Varighet, Mål-intensitet, Intensitetssone'
+    status: PASS
+    notes: 'All info displayed in Session Info Card (lines 121-181). Icons with labels. Conditional rendering for intensity_zone. Program name, week/session number, duration, intensity, carb rate all present.'
+
+  - id: AC3
+    description: 'Appen beregner totalt karb-behov med formel: (duration/60) * carbRate'
+    status: PASS
+    notes: 'calculateTotalCarbs() implements exact formula (line 66-69). Math.round for user-friendly whole numbers. Formula shown transparently (line 201). Example: 75min × 45g/h = 56g'
+
+  - id: AC4
+    description: 'Appen foreslår produkter fra skafferi'
+    status: DEFERRED
+    notes: 'Correctly scoped out to Story 4.2. Placeholder in place.'
+
+  - id: AC5
+    description: 'Knapp: "Lag plan" (går til Story 4.2)'
+    status: PASS
+    notes: 'Button with icon present (lines 207-215). Snackbar placeholder: "Produktvalg kommer i Story 4.2". Clear user feedback.'
+
+code_quality:
+  typescript_typing: 10
+  database_operations: 10
+  react_hooks_pattern: 10
+  material_design_compliance: 10
+  error_handling: 9
+  navigation_flow: 10
+  code_reusability: 10
+  norwegian_localization: 10
+
+  notes: |
+    Strengths:
+    - Full TypeScript typing with React.FC pattern
+    - Navigation params properly typed in ProgramStackParamList
+    - Parameterized SQL query in getSessionById (防SQL injection)
+    - Proper null checks (if (!session) return 0)
+    - Material Design 3 cards, buttons, colors
+    - Proper loading/error states with user-friendly messages
+    - Icons paired with text labels
+    - Consistent Norwegian localization
+    - Clean component structure (296 lines, well-organized)
+    - Proper useEffect dependency array
+
+    Minor Issues:
+    - Error handling logs to console but doesn't report to error tracking service (acceptable for MVP)
+    - No accessibility labels on some icons (minor)
+
+testing:
+  unit_tests: 0
+  integration_tests: 0
+  e2e_tests: 0
+  manual_testing_documented: true
+
+  notes: |
+    Missing automated tests (consistent with Epic 3 pattern):
+    - No unit tests for SessionPlanScreen component
+    - No tests for calculateTotalCarbs() function
+    - No tests for getSessionById() repository method
+    - No integration tests for navigation flow
+
+    Manual testing documented in Dev Agent Record:
+    - Navigate from ProgramDetailScreen
+    - Verify data loading
+    - Verify carb calculation accuracy
+    - Test error states
+    - Test back navigation
+
+security:
+  status: PASS
+  notes: |
+    - Parameterized SQL query in getSessionById (防SQL injection)
+    - No user input handling (display only)
+    - No external API calls
+    - No sensitive data exposure
+    - Navigation params validated (sessionId, programId are numbers)
+
+performance:
+  status: PASS
+  notes: |
+    - O(1) database queries (getSessionById, getById)
+    - Simple calculation (no loops)
+    - ScrollView appropriate for static content
+    - Loading state prevents render of incomplete data
+    - No performance regressions
+
+accessibility:
+  status: MINOR_ISSUES
+  notes: |
+    - ✅ Buttons have descriptive text ("Lag plan", "Gå tilbake")
+    - ✅ Icons paired with text labels in info rows
+    - ✅ Semantic card titles ("Øktinformasjon", "Karbohydratbehov")
+    - ⚠️ Some icons lack accessibility labels (info row icons)
+    - Recommendation: Add accessibilityLabel to MaterialCommunityIcons in info rows
+
+improvements:
+  before_production:
+    - Add unit tests for SessionPlanScreen component
+    - Add tests for calculateTotalCarbs() function
+    - Add tests for getSessionById() repository method
+    - Add accessibilityLabel to info row icons
+
+  post_story:
+    - Consider adding loading skeleton for better UX
+    - Consider adding test coverage for all Epic 4 stories together
+
+  optional:
+    - Add "Edit session" functionality (future epic)
+    - Add session history/previous plans (future epic)
+    - Add save/share carb calculation (future epic)
+
+edge_cases_handled:
+  - description: 'Session not found'
+    status: HANDLED
+    notes: 'Error state with "Økt ikke funnet" message and "Gå tilbake" button (line 90-107)'
+
+  - description: 'Program not found'
+    status: HANDLED
+    notes: 'Error state with "Program ikke funnet" message (line 52-56)'
+
+  - description: 'Network/database error'
+    status: HANDLED
+    notes: 'Generic error message "Kunne ikke laste øktdata" with console logging (line 58-61)'
+
+  - description: 'Missing intensity_zone'
+    status: HANDLED
+    notes: 'Conditional rendering: {session.intensity_zone && ...} (line 159-169)'
+
+  - description: 'Zero duration or carb rate'
+    status: HANDLED
+    notes: 'Math.round handles edge cases. Returns 0 if session is null (line 66-69)'
+
+technical_debt:
+  - item: 'Missing automated test coverage'
+    severity: 'medium'
+    rationale: 'Consistent pattern across Epic 3 and Epic 4. Team decision to defer testing for rapid feature development.'
+
+  - item: 'Missing accessibility labels on info row icons'
+    severity: 'low'
+    rationale: 'Icons are decorative, paired with text. Screen readers can read text labels.'
+
+files_reviewed:
+  - path: 'src/screens/session/SessionPlanScreen.tsx'
+    status: 'excellent'
+    lines: 307
+    notes: 'Clean component with proper error handling, loading states, TypeScript typing'
+
+  - path: 'src/database/repositories/ProgramRepository.ts'
+    status: 'excellent'
+    changes: 'Added getSessionById method (lines 60-75)'
+    notes: 'Parameterized query, proper error handling, follows existing patterns'
+
+  - path: 'src/types/navigation.ts'
+    status: 'excellent'
+    changes: 'Added SessionPlan params (line 29)'
+    notes: 'Properly typed navigation parameters'
+
+  - path: 'src/screens/programs/ProgramDetailScreen.tsx'
+    status: 'excellent'
+    changes: 'Updated handleSessionPress to navigate (lines 115-120)'
+    notes: 'Removed placeholder, added actual navigation'
+
+  - path: 'src/navigation/ProgramStackNavigator.tsx'
+    status: 'excellent'
+    changes: 'Registered SessionPlanScreen (lines 15, 37-41)'
+    notes: 'Proper screen registration with title'
+
+compliance:
+  typescript_strict: true
+  material_design_3: true
+  norwegian_localization: true
+  existing_patterns: true
+  sql_parameterization: true
+
+reviewed_by: Quinn
+reviewed_at: '2025-10-26'
