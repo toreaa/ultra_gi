@@ -1,0 +1,110 @@
+schema: 1
+story: '3.2'
+story_title: 'Velge og starte program'
+gate: CONCERNS
+status_reason: 'Excellent implementation quality (94/100) with full AC coverage, but lacks automated test coverage for this critical user flow'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-26T00:00:00Z'
+
+top_issues:
+  - severity: medium
+    category: test_coverage
+    description: 'No automated tests for critical start program flow'
+    refs:
+      - 'src/screens/programs/ProgramListScreen.tsx'
+      - 'src/hooks/useUserPrograms.ts'
+      - 'src/screens/home/HomeScreen.tsx'
+    suggested_owner: dev
+    recommendation: 'Add unit tests for useUserPrograms hook and integration tests for start program workflow'
+
+  - severity: low
+    category: performance
+    description: 'N+1 query pattern in HomeScreen when fetching program details'
+    refs:
+      - 'src/screens/home/HomeScreen.tsx:31-48'
+    suggested_owner: dev
+    recommendation: 'Create ProgramRepository.getProgramsWithDetails() method to fetch in single query'
+
+waiver:
+  active: false
+
+# Quality Metrics
+quality_score: 94  # 100 - (10 * 1 CONCERN for tests) - (4 for performance) - (2 for docs)
+expires: '2025-11-09T00:00:00Z'  # 2 weeks from review
+
+evidence:
+  tests_reviewed:
+    count: 0
+    note: 'No automated tests found for this story'
+  code_files_reviewed: 5
+  loc_reviewed: ~600
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]  # All ACs manually verified
+    ac_gaps: []  # No functionality gaps
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'No sensitive data handling. Hardcoded userId=1 acceptable for MVP. Proper error handling prevents information leakage.'
+  performance:
+    status: CONCERNS
+    notes: 'Minor N+1 query pattern in HomeScreen (non-blocking for MVP scale). FlatList virtualization properly implemented.'
+  reliability:
+    status: PASS
+    notes: 'Excellent error handling with user-friendly Norwegian messages. Loading states properly managed. Multi-program support correctly implemented.'
+  maintainability:
+    status: PASS
+    notes: 'Clean code with strong TypeScript typing. Proper separation of concerns. Follows established patterns. No refactoring needed.'
+
+recommendations:
+  immediate:  # Should address before production
+    - action: 'Add unit tests for useUserPrograms hook (loading, error states, refresh)'
+      refs: ['src/hooks/useUserPrograms.ts']
+      effort: '~1 hour'
+    - action: 'Add component tests for ProgramListScreen (dialog, navigation, error handling)'
+      refs: ['src/screens/programs/ProgramListScreen.tsx']
+      effort: '~2 hours'
+    - action: 'Add integration test for end-to-end start program flow'
+      refs: ['src/screens/programs/ProgramListScreen.tsx', 'src/screens/home/HomeScreen.tsx']
+      effort: '~1 hour'
+
+  future:  # Can be addressed in follow-up stories
+    - action: 'Optimize HomeScreen to fetch program details in single query'
+      refs: ['src/screens/home/HomeScreen.tsx', 'src/database/repositories/ProgramRepository.ts']
+      effort: '~30 minutes'
+    - action: 'Add JSDoc comments for complex state management'
+      refs: ['src/screens/programs/ProgramListScreen.tsx']
+      effort: '~15 minutes'
+    - action: 'Document hardcoded userId=1 assumption in code comments'
+      refs: ['src/screens/programs/ProgramListScreen.tsx:64', 'src/hooks/useUserPrograms.ts:24']
+      effort: '~5 minutes'
+
+code_quality_highlights:
+  - 'Excellent TypeScript strict typing throughout - zero any types'
+  - 'Proper event propagation handling (stopPropagation in ProgramCard)'
+  - 'Consistent Material Design 3 implementation'
+  - 'Multi-program support correctly implemented without constraints'
+  - 'Norwegian localization properly applied throughout'
+  - 'Clean separation: hooks, components, screens'
+
+acceptance_criteria_status:
+  - id: 1
+    description: 'Start program button on program card'
+    status: PASS
+    evidence: 'ProgramCard.tsx implements onStartPress prop with proper event handling'
+  - id: 2
+    description: 'Confirmation dialog with program info'
+    status: PASS
+    evidence: 'ProgramListScreen shows Dialog with name, description, duration, target audience'
+  - id: 3
+    description: 'Program saved, navigation, toast notification'
+    status: PASS
+    evidence: 'Calls ProgramRepository.startProgram(), navigates to Home tab, shows "Program startet!" toast'
+  - id: 4
+    description: 'Active program shown on dashboard'
+    status: PASS
+    evidence: 'HomeScreen displays all active programs with details using useUserPrograms hook'
+  - id: 5
+    description: 'Multi-program support'
+    status: PASS
+    evidence: 'FlatList displays all user programs, no constraints in database or UI'

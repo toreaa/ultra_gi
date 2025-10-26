@@ -19,6 +19,11 @@ export type OnboardingStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Skafferi: undefined;
-  Programs: undefined;
+  Programs: NavigatorScreenParams<ProgramStackParamList>;
   Profile: undefined;
+};
+
+export type ProgramStackParamList = {
+  ProgramList: undefined;
+  ProgramDetail: { programId: number; userProgramId?: number };
 };

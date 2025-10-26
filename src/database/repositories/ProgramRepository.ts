@@ -99,6 +99,27 @@ export class ProgramRepository {
   }
 
   /**
+   * Get a specific user program
+   */
+  static async getUserProgram(
+    userId: number,
+    programId: number
+  ): Promise<UserProgram | null> {
+    try {
+      const db = await getDatabase();
+      const result = await db.getFirstAsync<UserProgram>(
+        `SELECT * FROM user_programs
+         WHERE user_id = ? AND program_id = ? AND status = 'active'`,
+        [userId, programId]
+      );
+      return result || null;
+    } catch (error) {
+      console.error('ProgramRepository.getUserProgram failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Complete a user program
    */
   static async completeProgram(userProgramId: number): Promise<void> {

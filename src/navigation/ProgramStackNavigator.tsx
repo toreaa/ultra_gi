@@ -4,17 +4,14 @@
  * Stack navigator for the Programs tab.
  * Contains:
  * - ProgramList (main screen)
- * - ProgramDetail (Story 3.3 - placeholder)
+ * - ProgramDetail (Story 3.3)
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProgramListScreen } from '../screens/programs/ProgramListScreen';
-
-export type ProgramStackParamList = {
-  ProgramList: undefined;
-  ProgramDetail: { programId: number };
-};
+import { ProgramDetailScreen } from '../screens/programs/ProgramDetailScreen';
+import { ProgramStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<ProgramStackParamList>();
 
@@ -30,7 +27,11 @@ export function ProgramStackNavigator() {
         component={ProgramListScreen}
         options={{ title: 'Programmer' }}
       />
-      {/* ProgramDetail screen will be added in Story 3.3 */}
+      <Stack.Screen
+        name="ProgramDetail"
+        component={ProgramDetailScreen}
+        options={{ title: 'Programdetaljer' }}
+      />
     </Stack.Navigator>
   );
 }

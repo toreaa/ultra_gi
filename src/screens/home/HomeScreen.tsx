@@ -9,13 +9,23 @@ import React from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Appbar, Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useUserPrograms } from '../../hooks/useUserPrograms';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ProgramRepository } from '../../database/repositories/ProgramRepository';
 import { Program } from '../../types/database';
+import { MainTabParamList, ProgramStackParamList } from '../../types/navigation';
+
+type HomeScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
+  NativeStackNavigationProp<ProgramStackParamList>
+>;
 
 export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const { userPrograms, loading, error, refresh } = useUserPrograms();
   const [programDetails, setProgramDetails] = React.useState<Map<number, Program>>(new Map());
 
@@ -119,7 +129,16 @@ export const HomeScreen: React.FC = () => {
           renderItem={({ item }) => {
             const program = programDetails.get(item.program_id);
             return (
-              <Card style={styles.card} mode="elevated">
+              <Card
+                style={styles.card}
+                mode="elevated"
+                onPress={() => {
+                  navigation.navigate('Programs', {
+                    screen: 'ProgramDetail',
+                    params: { programId: item.program_id, userProgramId: item.id },
+                  });
+                }}
+              >
                 <Card.Title
                   title={program?.name || 'Laster...'}
                   left={(props) => (

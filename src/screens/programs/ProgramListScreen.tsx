@@ -16,11 +16,7 @@ import { ProgramCard } from '../../components/program/ProgramCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Program } from '../../types/database';
 import { ProgramRepository } from '../../database/repositories/ProgramRepository';
-
-type ProgramStackParamList = {
-  ProgramList: undefined;
-  ProgramDetail: { programId: number };
-};
+import { ProgramStackParamList } from '../../types/navigation';
 
 type ProgramListScreenNavigationProp = NativeStackNavigationProp<ProgramStackParamList, 'ProgramList'>;
 
@@ -46,9 +42,7 @@ export const ProgramListScreen: React.FC<ProgramListScreenProps> = ({ navigation
   );
 
   const handleProgramPress = (programId: number) => {
-    // Navigation to ProgramDetail screen will be implemented in Story 3.3
-    console.log('Program pressed:', programId);
-    // navigation.navigate('ProgramDetail', { programId });
+    navigation.navigate('ProgramDetail', { programId });
   };
 
   const handleStartPress = (program: Program) => {
