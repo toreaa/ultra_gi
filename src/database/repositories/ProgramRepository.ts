@@ -136,4 +136,59 @@ export class ProgramRepository {
       throw error;
     }
   }
+
+  /**
+   * Pause a user program
+   */
+  static async pauseProgram(userProgramId: number): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        `UPDATE user_programs
+         SET status = 'paused'
+         WHERE id = ?`,
+        [userProgramId]
+      );
+    } catch (error) {
+      console.error('ProgramRepository.pauseProgram failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resume a paused program
+   */
+  static async resumeProgram(userProgramId: number): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        `UPDATE user_programs
+         SET status = 'active'
+         WHERE id = ?`,
+        [userProgramId]
+      );
+    } catch (error) {
+      console.error('ProgramRepository.resumeProgram failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's paused programs
+   */
+  static async getUserPausedPrograms(userId: number = 1): Promise<UserProgram[]> {
+    try {
+      const db = await getDatabase();
+      const programs = await db.getAllAsync<UserProgram>(
+        `SELECT * FROM user_programs
+         WHERE user_id = ? AND status = 'paused'
+         ORDER BY started_at DESC`,
+        [userId]
+      );
+      return programs || [];
+    } catch (error) {
+      console.error('ProgramRepository.getUserPausedPrograms failed:', error);
+      throw error;
+    }
+  }
 }

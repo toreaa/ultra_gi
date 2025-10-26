@@ -1,0 +1,190 @@
+schema: 1
+story: '3.5'
+story_title: 'Multi-program support (Pause/Resume)'
+gate: CONCERNS
+status_reason: 'Excellent implementation quality (90/100) with full AC6 coverage and clean architecture, but lacks automated test coverage like Stories 3.2-3.4. Minor UX issue: no user feedback on resume errors.'
+quality_score: 90
+
+acceptance_criteria:
+  - id: AC1
+    description: 'Bruker kan starte flere programmer samtidig'
+    status: ALREADY_IMPLEMENTED
+    notes: 'Verified in Stories 3.1-3.3. No unique constraint on user_id + program_id.'
+
+  - id: AC2
+    description: 'Dashboard viser alle aktive programmer'
+    status: ALREADY_IMPLEMENTED
+    notes: 'HomeScreen renders all active programs with ScrollView. getUserActivePrograms() filters WHERE status = active.'
+
+  - id: AC3
+    description: 'Ved valg av økt (Epic 4), bruker velger hvilket program'
+    status: DEFERRED
+    notes: 'Correctly scoped out. To be implemented in Epic 4 (session planning).'
+
+  - id: AC4
+    description: 'Når bruker logger en økt, velg/bekrefte program'
+    status: DEFERRED
+    notes: 'Correctly scoped out. To be implemented in Epic 5 (session logging).'
+
+  - id: AC5
+    description: 'Progresjon trackes separat per program'
+    status: ALREADY_IMPLEMENTED
+    notes: 'Separate user_programs records. Each program has own completedSessions Map.'
+
+  - id: AC6
+    description: 'Pause/resume program functionality'
+    status: PASS
+    notes: 'Full implementation: pause button in Appbar, paused section in HomeScreen, resume button with auto-refresh, status chips with color coding.'
+
+code_quality:
+  typescript_typing: 10
+  database_operations: 10
+  react_hooks_pattern: 10
+  material_design_compliance: 10
+  state_management: 9
+  navigation_flow: 10
+  code_reusability: 10
+  norwegian_localization: 10
+
+  notes: |
+    Strengths:
+    - Full TypeScript typing with React.FC pattern
+    - Parameterized SQL queries (防SQL injection)
+    - usePausedPrograms hook mirrors useUserPrograms perfectly
+    - Material Design color semantics (green/orange)
+    - Combined loading states with OR operator
+    - Dual refresh on useFocusEffect
+    - renderProgramCard() helper handles both active and paused
+    - Consistent Norwegian localization
+
+    Minor Issues:
+    - No user feedback in handleResumeProgram on error (console.error only)
+    - Pause button in Appbar lacks accessibilityLabel
+
+testing:
+  unit_tests: 0
+  integration_tests: 0
+  e2e_tests: 0
+  manual_testing_documented: true
+
+  notes: |
+    Missing automated tests (consistent with Stories 3.2-3.4):
+    - No unit tests for usePausedPrograms hook
+    - No tests for pause/resume repository methods
+    - No tests for HomeScreen dual-section rendering
+
+    Manual testing documented in Dev Agent Record:
+    - Starting multiple programs
+    - Pause/resume flow
+    - Status chips and icons verification
+
+security:
+  status: PASS
+  notes: |
+    - Parameterized SQL queries (防SQL injection)
+    - No user input handling
+    - No external API calls
+    - Status values hardcoded ('active', 'paused')
+    - No sensitive data exposure
+
+performance:
+  status: PASS
+  notes: |
+    - O(1) database updates (WHERE id = ?)
+    - O(n) programDetails fetch (acceptable for small n)
+    - ScrollView appropriate for 2 sections
+    - Combined OR loading prevents double spinner
+    - useCallback prevents unnecessary re-renders
+
+accessibility:
+  status: MINOR_ISSUES
+  notes: |
+    - ✅ Buttons have descriptive text ("Gjenoppta")
+    - ✅ Icons paired with text labels
+    - ⚠️ Pause button in Appbar has no accessibility label (icon-only)
+    - Recommendation: Add accessibilityLabel="Pause program"
+
+improvements:
+  before_production:
+    - Add Snackbar feedback for handleResumeProgram errors
+    - Add accessibilityLabel to Appbar pause button
+    - Add unit tests for usePausedPrograms hook
+    - Add tests for pause/resume repository methods
+
+  post_story:
+    - Consider loading skeleton while program details fetch
+    - Add optimistic UI update for pause/resume actions
+    - Consider adding test coverage for all Epic 3 stories together
+
+  optional:
+    - Add confirmation dialog before pausing active program
+    - Add "paused_at" timestamp to track pause duration
+
+edge_cases_handled:
+  - description: 'No programs at all'
+    status: HANDLED
+    notes: 'Empty state shown when both active and paused are empty'
+
+  - description: 'Only active programs'
+    status: HANDLED
+    notes: 'Paused section not rendered'
+
+  - description: 'Only paused programs'
+    status: HANDLED
+    notes: 'Active section not rendered'
+
+  - description: 'userProgram is null'
+    status: HANDLED
+    notes: 'Early return in handlePauseProgram'
+
+  - description: 'programDetails not loaded'
+    status: HANDLED
+    notes: 'Shows "Laster..." placeholder'
+
+  - description: 'Resume/Pause errors'
+    status: PARTIALLY_HANDLED
+    notes: 'Console logging present. Missing user-facing Snackbar for resume errors.'
+
+technical_debt:
+  - item: 'Missing automated test coverage'
+    severity: 'medium'
+    rationale: 'Consistent pattern across Stories 3.2-3.4. Team decision to defer testing.'
+
+  - item: 'No user feedback on resume errors'
+    severity: 'low'
+    rationale: 'Edge case scenario. Console logging present. Low priority for MVP.'
+
+  - item: 'Missing accessibilityLabel on pause button'
+    severity: 'low'
+    rationale: 'Minor accessibility improvement. Icon context is clear.'
+
+files_reviewed:
+  - path: 'src/hooks/usePausedPrograms.ts'
+    status: 'excellent'
+    lines: 54
+    notes: 'Perfect hook pattern matching useUserPrograms'
+
+  - path: 'src/database/repositories/ProgramRepository.ts'
+    status: 'excellent'
+    changes: 'Added pauseProgram, resumeProgram, getUserPausedPrograms methods'
+    notes: 'Parameterized queries, proper error handling'
+
+  - path: 'src/screens/programs/ProgramDetailScreen.tsx'
+    status: 'excellent'
+    changes: 'Added pause button, handlePauseProgram, paused status chip'
+    notes: 'Conditional rendering, Material Design colors, proper navigation'
+
+  - path: 'src/screens/home/HomeScreen.tsx'
+    status: 'excellent'
+    changes: 'FlatList→ScrollView, dual sections, resume button, renderProgramCard helper'
+    notes: 'Clean refactor maintaining existing functionality'
+
+compliance:
+  typescript_strict: true
+  material_design_3: true
+  norwegian_localization: true
+  existing_patterns: true
+  sql_parameterization: true
+
+reviewed_by: Quinn
+reviewed_at: '2025-10-26'

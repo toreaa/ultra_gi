@@ -131,6 +131,20 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
     }
   };
 
+  const handlePauseProgram = async () => {
+    if (!userProgram) return;
+    try {
+      await ProgramRepository.pauseProgram(userProgram.id);
+      setSnackbarMessage('Program pauset');
+      setSnackbarVisible(true);
+      navigation.goBack(); // Return to home screen
+    } catch (err) {
+      console.error('Failed to pause program:', err);
+      setSnackbarMessage('Kunne ikke pause program');
+      setSnackbarVisible(true);
+    }
+  };
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('nb-NO', {
@@ -177,6 +191,9 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title={program.name} />
+        {userProgram && userProgram.status === 'active' && (
+          <Appbar.Action icon="pause-circle-outline" onPress={handlePauseProgram} color="#FF9800" />
+        )}
       </Appbar.Header>
 
       <SectionList
@@ -207,13 +224,27 @@ export const ProgramDetailScreen: React.FC<ProgramDetailScreenProps> = ({
             {/* Program Status */}
             <View style={styles.statusRow}>
               <Chip
-                icon={userProgram ? 'check-circle' : 'circle-outline'}
+                icon={
+                  !userProgram
+                    ? 'circle-outline'
+                    : userProgram.status === 'paused'
+                    ? 'pause-circle'
+                    : 'check-circle'
+                }
                 style={[
                   styles.statusChip,
-                  userProgram ? styles.statusActive : styles.statusInactive,
+                  !userProgram
+                    ? styles.statusInactive
+                    : userProgram.status === 'paused'
+                    ? styles.statusPaused
+                    : styles.statusActive,
                 ]}
               >
-                {userProgram ? 'Aktiv' : 'Ikke startet'}
+                {!userProgram
+                  ? 'Ikke startet'
+                  : userProgram.status === 'paused'
+                  ? 'Pauset'
+                  : 'Aktiv'}
               </Chip>
               {userProgram && (
                 <Text variant="bodySmall" style={styles.startDate}>
@@ -359,6 +390,9 @@ const styles = StyleSheet.create({
   },
   statusActive: {
     backgroundColor: '#E8F5E9',
+  },
+  statusPaused: {
+    backgroundColor: '#FFF3E0',
   },
   statusInactive: {
     backgroundColor: '#F5F5F5',
