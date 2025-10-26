@@ -13,6 +13,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProgramListScreen } from '../screens/programs/ProgramListScreen';
 import { ProgramDetailScreen } from '../screens/programs/ProgramDetailScreen';
 import { SessionPlanScreen } from '../screens/session/SessionPlanScreen';
+import { FuelSelectorScreen } from '../screens/session/FuelSelectorScreen';
 import { ProgramStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<ProgramStackParamList>();
@@ -38,6 +39,11 @@ export function ProgramStackNavigator() {
         name="SessionPlan"
         component={SessionPlanScreen}
         options={{ title: 'Planlegg økt' }}
+      />
+      <Stack.Screen
+        name="FuelSelector"
+        component={FuelSelectorScreen}
+        options={{ title: 'Velg produkter' }}
       />
     </Stack.Navigator>
   );

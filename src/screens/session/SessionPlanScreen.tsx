@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import { Text, Appbar, Card, Button, Snackbar } from 'react-native-paper';
+import { Text, Appbar, Card, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Program, ProgramSession } from '../../types/database';
@@ -29,7 +29,6 @@ export const SessionPlanScreen: React.FC<SessionPlanScreenProps> = ({
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   useEffect(() => {
     loadSessionData();
@@ -69,8 +68,11 @@ export const SessionPlanScreen: React.FC<SessionPlanScreenProps> = ({
   };
 
   const handleCreatePlan = () => {
-    setSnackbarVisible(true);
-    // TODO: Navigate to fuel selector in Story 4.2
+    navigation.navigate('FuelSelector', {
+      sessionId,
+      targetCarbs: calculateTotalCarbs(),
+      durationMinutes: session!.duration_minutes,
+    });
   };
 
   if (loading) {
@@ -214,14 +216,6 @@ export const SessionPlanScreen: React.FC<SessionPlanScreenProps> = ({
           Lag plan
         </Button>
       </ScrollView>
-
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-      >
-        Produktvalg kommer i Story 4.2
-      </Snackbar>
     </>
   );
 };

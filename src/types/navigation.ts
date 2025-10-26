@@ -27,4 +27,5 @@ export type ProgramStackParamList = {
   ProgramList: undefined;
   ProgramDetail: { programId: number; userProgramId?: number };
   SessionPlan: { sessionId: number; programId: number };
+  FuelSelector: { sessionId: number; targetCarbs: number; durationMinutes: number };
 };
