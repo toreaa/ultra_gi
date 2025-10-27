@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
   Main: NavigatorScreenParams<MainTabParamList>;
   ActiveSession: { plannedSessionId?: number }; // Story 5.1: Optional for spontaneous sessions
+  SessionSummary: { sessionLogId: number }; // Story 5.5: Session completion summary
   SessionActive: { sessionId: number }; // Legacy, kept for backward compatibility
   SessionAnalysis: { sessionId: number };
 };

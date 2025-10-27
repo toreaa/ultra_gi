@@ -138,6 +138,26 @@ export class SessionLogRepository {
   }
 
   /**
+   * Update post-session notes (Story 5.5)
+   * @param id - Session log ID
+   * @param notes - Post-session notes
+   */
+  static async updateNotes(id: number, notes: string): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        `UPDATE session_logs
+         SET post_session_notes = ?
+         WHERE id = ?`,
+        [notes, id]
+      );
+    } catch (error) {
+      console.error('SessionLogRepository.updateNotes failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get completed sessions for a specific user program
    * Used to show which program sessions have been completed
    */

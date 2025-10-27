@@ -5,6 +5,7 @@
  * Story 5.1: Start økt-modus
  * Story 5.3: Log intake
  * Story 5.4: Log discomfort
+ * Story 5.5: Avslutt økt
  *
  * Features:
  * - Large HH:MM:SS timer display
@@ -19,7 +20,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, Card, Chip, Appbar, ActivityIndicator, Snackbar } from 'react-native-paper';
+import { Text, Button, Card, Chip, Appbar, ActivityIndicator, Snackbar, Portal, Dialog } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SessionLogRepository } from '../../database/repositories/SessionLogRepository';
@@ -28,6 +29,7 @@ import { SessionEventRepository } from '../../database/repositories/SessionEvent
 import type { IntakeEventData, DiscomfortEventData } from '../../database/repositories/SessionEventRepository';
 import { FuelProduct } from '../../database/repositories/FuelProductRepository';
 import { SessionTimer } from '../../services/SessionTimer';
+import { endSession, getSessionSummary } from '../../services/sessionManager';
 import { RootStackParamList } from '../../types/navigation';
 import { FuelPlanItem } from '../../types/fuelPlan';
 import { NextIntakeCard, NextIntake } from '../../components/session/NextIntakeCard';
@@ -63,6 +65,10 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
 
   // Discomfort modal state
   const [discomfortModalVisible, setDiscomfortModalVisible] = useState(false);
+
+  // End session dialog state (Story 5.5)
+  const [endSessionDialogVisible, setEndSessionDialogVisible] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
 
   // Snackbar state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -315,6 +321,43 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     }
   };
 
+  /**
+   * Handle end session button tap - Show confirmation dialog (Story 5.5 AC2)
+   */
+  const handleEndSessionRequest = () => {
+    setEndSessionDialogVisible(true);
+  };
+
+  /**
+   * Confirm and end the session (Story 5.5 AC3)
+   */
+  const handleConfirmEndSession = async () => {
+    if (!sessionLogId) return;
+
+    try {
+      setEndingSession(true);
+
+      // Stop the timer
+      if (timerRef.current) {
+        timerRef.current.stop();
+      }
+
+      // End the session in database
+      await endSession(sessionLogId, elapsedSeconds);
+
+      // Close dialog
+      setEndSessionDialogVisible(false);
+
+      // Navigate to session summary (Story 5.5 AC4)
+      navigation.replace('SessionSummary', { sessionLogId });
+    } catch (err) {
+      console.error('Failed to end session:', err);
+      setSnackbarMessage('Kunne ikke avslutte økten');
+      setSnackbarVisible(true);
+      setEndingSession(false);
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -364,6 +407,13 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title="Økt-modus" />
+        {sessionStarted && (
+          <Appbar.Action
+            icon="stop-circle-outline"
+            onPress={handleEndSessionRequest}
+            color="#B00020"
+          />
+        )}
       </Appbar.Header>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -446,23 +496,6 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             >
               LOGG UBEHAG
             </Button>
-
-            {/* Other Action Buttons (Placeholder for Story 5.5) */}
-            <View style={styles.actionsContainer}>
-              <Button
-                mode="contained"
-                icon="stop"
-                style={styles.endButton}
-                buttonColor="#B00020"
-                disabled
-              >
-                Avslutt økt
-              </Button>
-            </View>
-
-            <Text variant="bodySmall" style={styles.placeholderNote}>
-              Avslutt kommer i Story 5.5
-            </Text>
           </>
         )}
       </ScrollView>
@@ -480,6 +513,40 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         onDismiss={() => setDiscomfortModalVisible(false)}
         onSubmit={handleLogDiscomfort}
       />
+
+      {/* End Session Confirmation Dialog (Story 5.5 AC2) */}
+      <Portal>
+        <Dialog
+          visible={endSessionDialogVisible}
+          onDismiss={() => !endingSession && setEndSessionDialogVisible(false)}
+        >
+          <Dialog.Title>Avslutt økt?</Dialog.Title>
+          <Dialog.Content>
+            <View style={styles.dialogContent}>
+              <Text variant="headlineMedium" style={styles.dialogTimer}>
+                {formatTime(elapsedSeconds)}
+              </Text>
+              <Text variant="bodyLarge" style={styles.dialogSummary}>
+                {events.filter(e => e.event_type === 'intake').length} inntak,{' '}
+                {events.filter(e => e.event_type === 'discomfort').length} ubehag
+              </Text>
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setEndSessionDialogVisible(false)} disabled={endingSession}>
+              Avbryt
+            </Button>
+            <Button
+              onPress={handleConfirmEndSession}
+              loading={endingSession}
+              disabled={endingSession}
+              textColor="#B00020"
+            >
+              Avslutt
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
 
       {/* Snackbar for feedback (Story 5.3 AC2, Story 5.4 AC3) */}
       <Snackbar
@@ -596,20 +663,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FF6F00',
   },
-  actionsContainer: {
-    gap: 12,
-    marginTop: 16,
+  dialogContent: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
-  actionButton: {
-    marginBottom: 8,
+  dialogTimer: {
+    fontWeight: 'bold',
+    color: '#1E88E5',
+    marginBottom: 12,
   },
-  endButton: {
-    marginTop: 8,
-  },
-  placeholderNote: {
-    textAlign: 'center',
-    color: '#999',
-    marginTop: 16,
-    fontStyle: 'italic',
+  dialogSummary: {
+    color: '#666',
   },
 });
