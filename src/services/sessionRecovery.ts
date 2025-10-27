@@ -271,10 +271,11 @@ export async function checkForSmartRecovery(): Promise<RecoverableSession | null
   const mostRecent = recoverableSessions.find(s => s.canRecover);
 
   if (mostRecent) {
-    mostRecent.recoveryData = await loadRecoveryData(mostRecent.sessionId);
+    const recoveryData = await loadRecoveryData(mostRecent.sessionId);
+    mostRecent.recoveryData = recoveryData ?? undefined;
   }
 
-  return mostRecent || null;
+  return mostRecent ?? null;
 }
 
 /**

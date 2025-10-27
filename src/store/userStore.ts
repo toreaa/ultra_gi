@@ -98,7 +98,10 @@ export const useUserStore = create<UserState>((set, get) => ({
 
       if (fields.length > 0) {
         const setClause = fields.map((field) => `${field} = ?`).join(', ');
-        const values = fields.map((field) => updates[field as keyof User]);
+        const values = fields.map((field) => {
+          const value = updates[field as keyof User];
+          return value ?? null;
+        });
 
         db.runSync(
           `UPDATE users SET ${setClause}, updated_at = ? WHERE id = ?`,

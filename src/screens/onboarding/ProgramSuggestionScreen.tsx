@@ -66,7 +66,7 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
       const db = await getDatabase();
 
       // Start the program in database
-      await ProgramRepository.startProgram(db, recommendation.program.id, 1);
+      await ProgramRepository.startProgram(recommendation.program.id, 1);
 
       // Navigate to ProfileSetup (final onboarding step)
       navigation.navigate('ProfileSetup');

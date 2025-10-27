@@ -18,7 +18,7 @@ export async function getRecommendedProgram(
   giIssue: string
 ): Promise<ProgramRecommendation> {
   // For MVP, all issues map to program ID 1
-  const program = await ProgramRepository.getById(db, 1);
+  const program = await ProgramRepository.getById(1);
 
   if (!program) {
     throw new Error('Default program not found. Database may not be initialized.');
@@ -58,7 +58,7 @@ export async function getProgramStartIntensity(
   db: SQLite.SQLiteDatabase,
   programId: number
 ): Promise<number> {
-  const sessions = await ProgramRepository.getProgramSessions(db, programId);
+  const sessions = await ProgramRepository.getProgramSessions(programId);
 
   if (sessions.length === 0) {
     return 30; // Default fallback
