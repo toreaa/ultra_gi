@@ -1,5 +1,22 @@
-import { SessionLog } from '../../types/database';
+import { SessionLog, SessionEvent } from '../../types/database';
 import { getDatabase } from '../index';
+
+/**
+ * Session with aggregated statistics (Story 7.3)
+ */
+export interface SessionWithStats {
+  id: number;
+  started_at: string;
+  ended_at: string | null;
+  duration_actual_minutes: number;
+  planned_session_id: number | null;
+  carb_rate_per_hour: number;
+  total_carbs: number;
+  intake_count: number;
+  discomfort_count: number;
+  avg_discomfort: number | null;
+  post_session_notes: string | null;
+}
 
 /**
  * Completed session data with program_session_id
@@ -182,6 +199,123 @@ export class SessionLogRepository {
       return sessions || [];
     } catch (error) {
       console.error('SessionLogRepository.getCompletedByProgram failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get session with all its events (Story 7.1)
+   * Returns session log and array of events
+   * @param sessionLogId - Session log ID
+   * @returns Object with sessionLog and events, or null
+   */
+  static async getSessionWithEvents(sessionLogId: number): Promise<{
+    sessionLog: SessionLog;
+    events: SessionEvent[];
+  } | null> {
+    try {
+      const db = await getDatabase();
+
+      // Get session log
+      const sessionLog = await db.getFirstAsync<SessionLog>(
+        'SELECT * FROM session_logs WHERE id = ?',
+        [sessionLogId]
+      );
+
+      if (!sessionLog) {
+        return null;
+      }
+
+      // Get session events ordered by timestamp
+      const events = await db.getAllAsync<SessionEvent>(
+        `SELECT * FROM session_events
+         WHERE session_log_id = ?
+         ORDER BY timestamp_offset_seconds ASC`,
+        [sessionLogId]
+      );
+
+      return {
+        sessionLog,
+        events: events || [],
+      };
+    } catch (error) {
+      console.error('SessionLogRepository.getSessionWithEvents failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recent completed sessions (Story 7.1)
+   * Used for displaying recent sessions on dashboard
+   * @param userId - User ID
+   * @param limit - Number of sessions to return (default 5)
+   * @returns Array of completed session logs
+   */
+  static async getRecentCompleted(
+    userId: number,
+    limit: number = 5
+  ): Promise<SessionLog[]> {
+    try {
+      const db = await getDatabase();
+
+      const sessions = await db.getAllAsync<SessionLog>(
+        `SELECT * FROM session_logs
+         WHERE user_id = ? AND session_status = 'completed'
+         ORDER BY ended_at DESC
+         LIMIT ?`,
+        [userId, limit]
+      );
+
+      return sessions || [];
+    } catch (error) {
+      console.error('SessionLogRepository.getRecentCompleted failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all completed sessions with aggregated statistics (Story 7.3)
+   * Used for analysis table with pattern identification
+   * @param userId - User ID
+   * @returns Array of sessions with stats (carb rate, discomfort, etc.)
+   */
+  static async getAllSessionsWithStats(
+    userId: number
+  ): Promise<SessionWithStats[]> {
+    try {
+      const db = await getDatabase();
+
+      const sessions = await db.getAllAsync<SessionWithStats>(
+        `SELECT
+          sl.id,
+          sl.started_at,
+          sl.ended_at,
+          sl.duration_actual_minutes,
+          sl.planned_session_id,
+          sl.post_session_notes,
+          CAST(
+            (SUM(CASE WHEN se.event_type = 'intake' THEN JSON_EXTRACT(se.data_json, '$.carbs_consumed') ELSE 0 END)
+            / NULLIF(sl.duration_actual_minutes, 0)) * 60
+            AS REAL
+          ) AS carb_rate_per_hour,
+          CAST(
+            SUM(CASE WHEN se.event_type = 'intake' THEN JSON_EXTRACT(se.data_json, '$.carbs_consumed') ELSE 0 END)
+            AS REAL
+          ) AS total_carbs,
+          COUNT(CASE WHEN se.event_type = 'intake' THEN 1 END) AS intake_count,
+          COUNT(CASE WHEN se.event_type = 'discomfort' THEN 1 END) AS discomfort_count,
+          AVG(CASE WHEN se.event_type = 'discomfort' THEN JSON_EXTRACT(se.data_json, '$.level') END) AS avg_discomfort
+         FROM session_logs sl
+         LEFT JOIN session_events se ON se.session_log_id = sl.id
+         WHERE sl.session_status = 'completed' AND sl.user_id = ?
+         GROUP BY sl.id
+         ORDER BY sl.started_at DESC`,
+        [userId]
+      );
+
+      return sessions || [];
+    } catch (error) {
+      console.error('SessionLogRepository.getAllSessionsWithStats failed:', error);
       throw error;
     }
   }

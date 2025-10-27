@@ -17,6 +17,11 @@ import { OnboardingNavigator } from './src/navigation/OnboardingNavigator';
 import { MainTabNavigator } from './src/navigation/MainTabNavigator';
 import { ActiveSessionScreen } from './src/screens/session/ActiveSessionScreen';
 import { SessionSummaryScreen } from './src/screens/session/SessionSummaryScreen';
+import { SessionDetailScreen } from './src/screens/analysis/SessionDetailScreen';
+import { SessionGraphScreen } from './src/screens/analysis/SessionGraphScreen';
+import { PatternAnalysisScreen } from './src/screens/analysis/PatternAnalysisScreen';
+import { ProgramProgressionScreen } from './src/screens/programs/ProgramProgressionScreen';
+import { CompareProgramsScreen } from './src/screens/programs/CompareProgramsScreen';
 import { useUserStore } from './src/store/userStore';
 import { initDatabase } from './src/database/index';
 import { RootStackParamList } from './src/types/navigation';
@@ -61,6 +66,11 @@ function AppContent() {
       <RootStack.Screen name="Main" component={MainTabNavigator} />
       <RootStack.Screen name="ActiveSession" component={ActiveSessionScreen} />
       <RootStack.Screen name="SessionSummary" component={SessionSummaryScreen} />
+      <RootStack.Screen name="SessionDetail" component={SessionDetailScreen} />
+      <RootStack.Screen name="SessionGraph" component={SessionGraphScreen} />
+      <RootStack.Screen name="PatternAnalysis" component={PatternAnalysisScreen} />
+      <RootStack.Screen name="ProgramProgression" component={ProgramProgressionScreen} />
+      <RootStack.Screen name="ComparePrograms" component={CompareProgramsScreen} />
     </RootStack.Navigator>
   );
 }

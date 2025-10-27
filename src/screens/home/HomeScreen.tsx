@@ -1,7 +1,8 @@
 /**
  * HomeScreen
  *
- * Dashboard showing user's active programs.
+ * Dashboard showing user's active programs and recent sessions.
+ * Story 7.1: Added recent completed sessions section
  * Supports multiple active programs.
  */
 
@@ -17,12 +18,13 @@ import { useUserPrograms } from '../../hooks/useUserPrograms';
 import { usePausedPrograms } from '../../hooks/usePausedPrograms';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ProgramRepository } from '../../database/repositories/ProgramRepository';
-import { Program } from '../../types/database';
-import { MainTabParamList, ProgramStackParamList } from '../../types/navigation';
+import { SessionLogRepository } from '../../database/repositories/SessionLogRepository';
+import { Program, SessionLog } from '../../types/database';
+import { MainTabParamList, ProgramStackParamList, RootStackParamList } from '../../types/navigation';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
-  NativeStackNavigationProp<ProgramStackParamList>
+  NativeStackNavigationProp<RootStackParamList>
 >;
 
 export const HomeScreen: React.FC = () => {
@@ -30,16 +32,32 @@ export const HomeScreen: React.FC = () => {
   const { userPrograms, loading: activeLoading, error: activeError, refresh: refreshActive } = useUserPrograms();
   const { pausedPrograms, loading: pausedLoading, error: pausedError, refresh: refreshPaused } = usePausedPrograms();
   const [programDetails, setProgramDetails] = React.useState<Map<number, Program>>(new Map());
+  const [recentSessions, setRecentSessions] = React.useState<SessionLog[]>([]);
+  const [sessionsLoading, setSessionsLoading] = React.useState(false);
 
   const loading = activeLoading || pausedLoading;
   const error = activeError || pausedError;
+
+  // Load recent sessions
+  const loadRecentSessions = React.useCallback(async () => {
+    try {
+      setSessionsLoading(true);
+      const sessions = await SessionLogRepository.getRecentCompleted(1, 5); // User ID 1, limit 5
+      setRecentSessions(sessions);
+    } catch (err) {
+      console.error('Failed to load recent sessions:', err);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
 
   // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       refreshActive();
       refreshPaused();
-    }, [refreshActive, refreshPaused])
+      loadRecentSessions();
+    }, [refreshActive, refreshPaused, loadRecentSessions])
   );
 
   // Fetch program details for both active and paused programs
@@ -82,6 +100,79 @@ export const HomeScreen: React.FC = () => {
       month: 'long',
       year: 'numeric',
     });
+  };
+
+  const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}t ${mins}min`;
+    }
+    return `${mins}min`;
+  };
+
+  const formatDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dateStr = date.toLocaleDateString('nb-NO');
+    const todayStr = today.toLocaleDateString('nb-NO');
+    const yesterdayStr = yesterday.toLocaleDateString('nb-NO');
+
+    if (dateStr === todayStr) {
+      return `I dag, ${date.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (dateStr === yesterdayStr) {
+      return `I går, ${date.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return date.toLocaleDateString('nb-NO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const renderSessionCard = (session: SessionLog) => {
+    return (
+      <Card
+        key={session.id}
+        style={styles.card}
+        mode="elevated"
+        onPress={() => {
+          navigation.navigate('SessionDetail', { sessionLogId: session.id });
+        }}
+      >
+        <Card.Title
+          title={formatDateTime(session.ended_at || session.started_at)}
+          left={(props) => (
+            <MaterialCommunityIcons
+              name="check-circle"
+              size={24}
+              color="#4CAF50"
+              style={styles.icon}
+            />
+          )}
+        />
+        <Card.Content>
+          <View style={styles.metaRow}>
+            <MaterialCommunityIcons name="timer" size={16} color="#666" />
+            <Text variant="bodySmall" style={styles.metaText}>
+              {formatDuration(session.duration_actual_minutes || 0)}
+            </Text>
+          </View>
+
+          {session.planned_session_id && (
+            <View style={styles.metaRow}>
+              <MaterialCommunityIcons name="calendar-check" size={16} color="#666" />
+              <Text variant="bodySmall" style={styles.metaText}>
+                Planlagt økt
+              </Text>
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+    );
   };
 
   if (loading) {
@@ -200,9 +291,29 @@ export const HomeScreen: React.FC = () => {
         <Appbar.Content title="Hjem" />
       </Appbar.Header>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        {userPrograms.length > 0 && (
+        {/* Recent Sessions Section (Story 7.1) */}
+        {recentSessions.length > 0 && (
           <>
             <View style={styles.header}>
+              <Text variant="headlineSmall" style={styles.headerText}>
+                Nylige økter
+              </Text>
+            </View>
+            {recentSessions.map((session) => renderSessionCard(session))}
+            <Button
+              mode="outlined"
+              icon="chart-box-outline"
+              onPress={() => navigation.navigate('PatternAnalysis')}
+              style={styles.seeAllButton}
+            >
+              Se alle mønstre
+            </Button>
+          </>
+        )}
+
+        {userPrograms.length > 0 && (
+          <>
+            <View style={[styles.header, recentSessions.length > 0 && styles.sectionSpacing]}>
               <Text variant="headlineSmall" style={styles.headerText}>
                 Mine aktive programmer
               </Text>
@@ -295,5 +406,10 @@ const styles = StyleSheet.create({
   },
   resumeButton: {
     backgroundColor: '#4CAF50',
+  },
+  seeAllButton: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
   },
 });

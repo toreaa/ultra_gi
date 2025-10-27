@@ -6,6 +6,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { OnboardingStackParamList } from '../../types/navigation';
 import { getDatabase } from '../../database';
 import { ProgramRepository } from '../../database/repositories/ProgramRepository';
+import { useUserStore } from '../../store/userStore';
 import {
   getRecommendedProgram,
   getProgramStartIntensity,
@@ -58,12 +59,20 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
     }
   };
 
+  const completeOnboarding = useUserStore((state) => state.completeOnboarding);
+
   const handleStartProgram = async () => {
     if (!recommendation) return;
 
     try {
       setIsStarting(true);
       const db = await getDatabase();
+
+      // Create user with onboarding data
+      await completeOnboarding({
+        primary_goal: route.params.goal,
+        primary_gi_issue: route.params.giIssue,
+      });
 
       // Start the program in database
       await ProgramRepository.startProgram(recommendation.program.id, 1);
