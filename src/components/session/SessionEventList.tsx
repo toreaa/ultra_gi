@@ -9,7 +9,7 @@ import React from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SessionEvent, IntakeEventData } from '../../database/repositories/SessionEventRepository';
+import { SessionEvent, IntakeEventData, DiscomfortEventData } from '../../database/repositories/SessionEventRepository';
 
 interface SessionEventListProps {
   events: SessionEvent[];
@@ -45,11 +45,13 @@ export const SessionEventList: React.FC<SessionEventListProps> = ({ events }) =>
     }
 
     if (item.event_type === 'discomfort') {
+      const data = JSON.parse(item.data_json) as DiscomfortEventData;
+      const symptomText = data.symptom ? ` - ${data.symptom}` : '';
       return (
         <View style={styles.eventItem}>
           <MaterialCommunityIcons name="alert-circle" size={20} color="#FF9800" />
           <Text variant="bodyMedium" style={styles.eventText}>
-            {timeText} - Ubehag registrert
+            {timeText} - ⚠️ Ubehag ({data.severity}/5){symptomText}
           </Text>
         </View>
       );

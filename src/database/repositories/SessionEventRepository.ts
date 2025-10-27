@@ -28,7 +28,7 @@ export interface IntakeEventData {
 
 export interface DiscomfortEventData {
   severity: number; // 1-5 scale
-  symptoms: string[];
+  symptom?: string; // MVP: single symptom (optional), not array
   notes?: string;
 }
 

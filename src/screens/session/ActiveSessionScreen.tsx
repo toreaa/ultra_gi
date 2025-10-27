@@ -1,9 +1,10 @@
 /**
  * ActiveSessionScreen
  *
- * Active workout session screen with running timer and intake logging.
+ * Active workout session screen with running timer, intake and discomfort logging.
  * Story 5.1: Start økt-modus
  * Story 5.3: Log intake
+ * Story 5.4: Log discomfort
  *
  * Features:
  * - Large HH:MM:SS timer display
@@ -11,8 +12,9 @@
  * - Session info (planned vs spontaneous)
  * - Status badge (🟢 Aktiv)
  * - Intake logging (planned quick log + unplanned product selector)
+ * - Discomfort logging (1-5 severity scale with optional symptom/notes)
  * - Next intake card (shows upcoming planned intake)
- * - Event log (displays intake events)
+ * - Event log (displays intake and discomfort events)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -23,7 +25,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SessionLogRepository } from '../../database/repositories/SessionLogRepository';
 import { PlannedSessionRepository } from '../../database/repositories/PlannedSessionRepository';
 import { SessionEventRepository } from '../../database/repositories/SessionEventRepository';
-import type { IntakeEventData } from '../../database/repositories/SessionEventRepository';
+import type { IntakeEventData, DiscomfortEventData } from '../../database/repositories/SessionEventRepository';
 import { FuelProduct } from '../../database/repositories/FuelProductRepository';
 import { SessionTimer } from '../../services/SessionTimer';
 import { RootStackParamList } from '../../types/navigation';
@@ -31,6 +33,7 @@ import { FuelPlanItem } from '../../types/fuelPlan';
 import { NextIntakeCard, NextIntake } from '../../components/session/NextIntakeCard';
 import { SessionEventList } from '../../components/session/SessionEventList';
 import { ProductSelectorSheet } from '../../components/session/ProductSelectorSheet';
+import { DiscomfortModal } from '../../components/session/DiscomfortModal';
 
 type ActiveSessionScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -53,10 +56,13 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   // Fuel plan state
   const [fuelPlan, setFuelPlan] = useState<FuelPlanItem[]>([]);
   const [nextIntake, setNextIntake] = useState<NextIntake | null>(null);
-  const [intakeEvents, setIntakeEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
 
   // Product selector state
   const [productSelectorVisible, setProductSelectorVisible] = useState(false);
+
+  // Discomfort modal state
+  const [discomfortModalVisible, setDiscomfortModalVisible] = useState(false);
 
   // Snackbar state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -83,7 +89,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     if (sessionStarted && fuelPlan.length > 0) {
       updateNextIntake();
     }
-  }, [elapsedSeconds, intakeEvents, fuelPlan, sessionStarted]);
+  }, [elapsedSeconds, events, fuelPlan, sessionStarted]);
 
   const loadPlannedSessionInfo = async () => {
     try {
@@ -140,7 +146,8 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   const updateNextIntake = () => {
     const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
-    // Get all logged intake timing_minutes
+    // Get all logged intake timing_minutes (filter to intake events only)
+    const intakeEvents = events.filter(e => e.event_type === 'intake');
     const loggedTimings = intakeEvents
       .map(e => {
         const data = JSON.parse(e.data_json) as IntakeEventData;
@@ -259,14 +266,50 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   };
 
   /**
-   * Reload intake events from database
+   * Log discomfort event from modal
+   */
+  const handleLogDiscomfort = async (
+    severity: number,
+    symptom?: string,
+    notes?: string
+  ) => {
+    if (!sessionLogId) return;
+
+    try {
+      const discomfortData: DiscomfortEventData = {
+        severity,
+        symptom,
+        notes,
+      };
+
+      await SessionEventRepository.createDiscomfortEvent(
+        sessionLogId,
+        elapsedSeconds,
+        discomfortData
+      );
+
+      // Reload all events
+      await reloadEvents();
+
+      // Show success snackbar
+      setSnackbarMessage(`✓ Ubehag logget (nivå ${severity})`);
+      setSnackbarVisible(true);
+    } catch (err) {
+      console.error('Failed to log discomfort:', err);
+      setSnackbarMessage('Kunne ikke logge ubehag');
+      setSnackbarVisible(true);
+    }
+  };
+
+  /**
+   * Reload all events from database (intake, discomfort, notes)
    */
   const reloadEvents = async () => {
     if (!sessionLogId) return;
 
     try {
-      const events = await SessionEventRepository.getEventsBySession(sessionLogId, 'intake');
-      setIntakeEvents(events);
+      const allEvents = await SessionEventRepository.getEventsBySession(sessionLogId);
+      setEvents(allEvents);
     } catch (err) {
       console.error('Failed to reload events:', err);
     }
@@ -388,19 +431,24 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
               INNTAK
             </Button>
 
-            {/* Event Log (Story 5.3 AC4) */}
-            {intakeEvents.length > 0 && <SessionEventList events={intakeEvents} />}
+            {/* Event Log (Story 5.3 AC4, Story 5.4 AC4) */}
+            {events.length > 0 && <SessionEventList events={events} />}
 
-            {/* Other Action Buttons (Placeholder for Story 5.4-5.5) */}
+            {/* Discomfort Button (Story 5.4 AC1) */}
+            <Button
+              mode="outlined"
+              icon="alert"
+              onPress={() => setDiscomfortModalVisible(true)}
+              style={styles.discomfortButton}
+              contentStyle={styles.discomfortButtonContent}
+              labelStyle={styles.discomfortButtonLabel}
+              buttonColor="#FF6F00"
+            >
+              LOGG UBEHAG
+            </Button>
+
+            {/* Other Action Buttons (Placeholder for Story 5.5) */}
             <View style={styles.actionsContainer}>
-              <Button
-                mode="outlined"
-                icon="alert"
-                style={styles.actionButton}
-                disabled
-              >
-                Logg ubehag
-              </Button>
               <Button
                 mode="contained"
                 icon="stop"
@@ -413,7 +461,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             </View>
 
             <Text variant="bodySmall" style={styles.placeholderNote}>
-              Ubehag og avslutt kommer i Story 5.4-5.5
+              Avslutt kommer i Story 5.5
             </Text>
           </>
         )}
@@ -426,7 +474,14 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         onSelectProduct={handleSelectProduct}
       />
 
-      {/* Snackbar for feedback (Story 5.3 AC2) */}
+      {/* Discomfort Modal (Story 5.4 AC2-3) */}
+      <DiscomfortModal
+        visible={discomfortModalVisible}
+        onDismiss={() => setDiscomfortModalVisible(false)}
+        onSubmit={handleLogDiscomfort}
+      />
+
+      {/* Snackbar for feedback (Story 5.3 AC2, Story 5.4 AC3) */}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
@@ -528,6 +583,18 @@ const styles = StyleSheet.create({
   intakeButtonLabel: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  discomfortButton: {
+    marginBottom: 16,
+    borderColor: '#FF6F00',
+  },
+  discomfortButtonContent: {
+    paddingVertical: 16,
+  },
+  discomfortButtonLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF6F00',
   },
   actionsContainer: {
     gap: 12,
