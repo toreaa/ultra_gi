@@ -6,11 +6,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import { Text, Appbar, Card, Button, IconButton, ProgressBar } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { Text, Appbar, Card, Button, IconButton, ProgressBar, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FuelProduct, FuelProductRepository } from '../../database/repositories/FuelProductRepository';
+import { PlannedSessionRepository } from '../../database/repositories/PlannedSessionRepository';
 import { FuelPlan, FuelPlanItem } from '../../types/fuelPlan';
 import { generateFuelPlan, generateTiming, recalculatePlan } from '../../services/fuelPlanner';
 import { ProgramStackParamList } from '../../types/navigation';
@@ -35,6 +36,8 @@ export const FuelSelectorScreen: React.FC<FuelSelectorScreenProps> = ({
   const [availableProducts, setAvailableProducts] = useState<FuelProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     loadProductsAndGeneratePlan();
@@ -101,10 +104,56 @@ export const FuelSelectorScreen: React.FC<FuelSelectorScreenProps> = ({
     }
   };
 
-  const handleConfirmPlan = () => {
-    // TODO: Navigate to Story 4.3 (SessionConfirm)
-    console.log('Confirm plan:', plan);
-    navigation.goBack();
+  const handleConfirmPlan = async () => {
+    try {
+      // Save plan to database
+      const plannedSessionId = await PlannedSessionRepository.create({
+        user_id: 1, // Hardcoded for MVP
+        program_session_id: sessionId,
+        planned_date: new Date().toISOString(),
+        fuel_plan_json: JSON.stringify(plan.items),
+      });
+
+      // Show success snackbar
+      setSnackbarMessage('✓ Plan lagret!');
+      setSnackbarVisible(true);
+
+      // Show dialog: "Start økten nå?"
+      Alert.alert(
+        'Start økten nå?',
+        'Vil du starte økten med denne planen?',
+        [
+          {
+            text: 'Senere',
+            style: 'cancel',
+            onPress: () => {
+              // Navigate back to ProgramDetail
+              navigation.goBack();
+            },
+          },
+          {
+            text: 'Start økt',
+            onPress: () => {
+              // Try to navigate to SessionActive (Epic 5)
+              // If not implemented, show placeholder
+              try {
+                // @ts-ignore - SessionActive may not exist yet
+                navigation.navigate('SessionActive', { sessionId: plannedSessionId });
+              } catch (error) {
+                // Epic 5 not implemented yet - show placeholder
+                setSnackbarMessage('Økt-modus kommer i Epic 5');
+                setSnackbarVisible(true);
+                setTimeout(() => navigation.goBack(), 1500);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to save planned session:', error);
+      setSnackbarMessage('Kunne ikke lagre plan');
+      setSnackbarVisible(true);
+    }
   };
 
   if (loading) {
@@ -322,6 +371,15 @@ export const FuelSelectorScreen: React.FC<FuelSelectorScreenProps> = ({
           Bekreft plan
         </Button>
       </ScrollView>
+
+      {/* Snackbar for feedback */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </>
   );
 };
