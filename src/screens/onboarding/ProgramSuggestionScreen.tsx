@@ -60,13 +60,13 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
   };
 
   const completeOnboarding = useUserStore((state) => state.completeOnboarding);
+  const user = useUserStore((state) => state.user);
 
   const handleStartProgram = async () => {
     if (!recommendation) return;
 
     try {
       setIsStarting(true);
-      const db = await getDatabase();
 
       // Create user with onboarding data
       await completeOnboarding({
@@ -74,8 +74,14 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
         primary_gi_issue: route.params.giIssue,
       });
 
+      // Get the created user's ID
+      const currentUser = useUserStore.getState().user;
+      if (!currentUser) {
+        throw new Error('User not created');
+      }
+
       // Start the program in database
-      await ProgramRepository.startProgram(recommendation.program.id, 1);
+      await ProgramRepository.startProgram(recommendation.program.id, currentUser.id);
 
       // Navigate to ProfileSetup (final onboarding step)
       navigation.navigate('ProfileSetup');
