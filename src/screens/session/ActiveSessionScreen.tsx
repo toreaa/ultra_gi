@@ -3,6 +3,7 @@
  *
  * Active workout session screen with running timer, intake and discomfort logging.
  * Story 5.1: Start økt-modus
+ * Story 5.2: Varsler for inntak
  * Story 5.3: Log intake
  * Story 5.4: Log discomfort
  * Story 5.5: Avslutt økt
@@ -30,6 +31,7 @@ import type { IntakeEventData, DiscomfortEventData } from '../../database/reposi
 import { FuelProduct } from '../../database/repositories/FuelProductRepository';
 import { SessionTimer } from '../../services/SessionTimer';
 import { endSession, getSessionSummary } from '../../services/sessionManager';
+import { requestNotificationPermissions, scheduleAllIntakeReminders } from '../../services/notificationService';
 import { RootStackParamList } from '../../types/navigation';
 import { FuelPlanItem } from '../../types/fuelPlan';
 import { NextIntakeCard, NextIntake } from '../../components/session/NextIntakeCard';
@@ -119,11 +121,13 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       setLoading(true);
       setError(null);
 
+      const sessionStartTime = new Date();
+
       // Create session log in database
       const logId = await SessionLogRepository.create({
         user_id: 1, // Hardcoded for MVP
         planned_session_id: plannedSessionId,
-        started_at: new Date().toISOString(),
+        started_at: sessionStartTime.toISOString(),
         session_status: 'active',
       });
 
@@ -135,6 +139,17 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         setElapsedSeconds(elapsed);
       });
       timerRef.current = timer;
+
+      // Schedule intake notifications if there's a fuel plan (Story 5.2)
+      if (fuelPlan.length > 0) {
+        const permissionStatus = await requestNotificationPermissions();
+
+        if (permissionStatus === 'granted') {
+          await scheduleAllIntakeReminders(fuelPlan, sessionStartTime);
+        } else {
+          console.log('⚠️ Notification permission denied - no intake reminders');
+        }
+      }
 
       setSessionStarted(true);
       console.log(`Session started with log ID: ${logId}`);
