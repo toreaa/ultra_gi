@@ -313,25 +313,74 @@ const MIGRATIONS: Migration[] = [
     }
   },
 
-  // Example future migration:
-  // {
-  //   version: 2,
-  //   name: 'Add session recovery table',
-  //   up: async (db: SQLite.SQLiteDatabase) => {
-  //     await db.execAsync(`
-  //       CREATE TABLE session_recovery (
-  //         id INTEGER PRIMARY KEY AUTOINCREMENT,
-  //         session_log_id INTEGER NOT NULL,
-  //         recovery_data TEXT NOT NULL,
-  //         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  //         FOREIGN KEY (session_log_id) REFERENCES session_logs(id) ON DELETE CASCADE
-  //       );
-  //     `);
-  //   },
-  //   down: async (db: SQLite.SQLiteDatabase) => {
-  //     await db.execAsync('DROP TABLE IF EXISTS session_recovery;');
-  //   }
-  // }
+  {
+    version: 2,
+    name: 'Ensure seed data exists',
+    up: async (db: SQLite.SQLiteDatabase) => {
+      console.log('Running migration 2: Ensure seed data exists');
+
+      // Check if seed program already exists
+      const existingProgram = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM programs WHERE name = '4-Week Base Carb Training'`
+      );
+
+      if (existingProgram && existingProgram.count > 0) {
+        console.log('✅ Seed program already exists, skipping seed data');
+        return;
+      }
+
+      console.log('📦 Adding missing seed data...');
+
+      // Seed default program
+      await db.runAsync(`
+        INSERT INTO programs (name, description, duration_weeks, target_audience, research_source)
+        VALUES (?, ?, ?, ?, ?)
+      `, [
+        '4-Week Base Carb Training',
+        'Progressive carbohydrate tolerance training starting at 30g/hr, building to 60g/hr over 4 weeks.',
+        4,
+        'Endurance athletes new to carb training',
+        'Based on Jeukendrup (2014) gut training protocols'
+      ]);
+
+      // Get the program ID
+      const program = await db.getFirstAsync<{ id: number }>(
+        `SELECT id FROM programs WHERE name = '4-Week Base Carb Training'`
+      );
+
+      if (!program) {
+        throw new Error('Failed to create seed program');
+      }
+
+      // Seed program sessions
+      const sessions = [
+        [program.id, 1, 1, 60, 30, 'Zone 2', 'Start easy, focus on tolerance'],
+        [program.id, 1, 2, 60, 30, 'Zone 2', 'Repeat Week 1 Session 1'],
+        [program.id, 2, 1, 75, 45, 'Zone 2-3', 'Increase duration and carb rate'],
+        [program.id, 2, 2, 75, 45, 'Zone 2-3', 'Repeat Week 2 Session 1'],
+        [program.id, 3, 1, 90, 60, 'Zone 2-3', 'Target race pace carb intake'],
+        [program.id, 3, 2, 90, 60, 'Zone 2-3', 'Repeat Week 3 Session 1'],
+        [program.id, 4, 1, 120, 60, 'Zone 2-3', 'Long session at race pace fueling'],
+        [program.id, 4, 2, 120, 60, 'Zone 2-3', 'Final long session'],
+      ];
+
+      for (const session of sessions) {
+        await db.runAsync(`
+          INSERT INTO program_sessions
+            (program_id, week_number, session_number, duration_minutes, carb_rate_g_per_hour, intensity_zone, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, session);
+      }
+
+      console.log('✅ Migration 2 completed: Seed data ensured');
+    },
+
+    down: async (db: SQLite.SQLiteDatabase) => {
+      // Remove seed data
+      await db.runAsync(`DELETE FROM program_sessions WHERE program_id IN (SELECT id FROM programs WHERE name = '4-Week Base Carb Training')`);
+      await db.runAsync(`DELETE FROM programs WHERE name = '4-Week Base Carb Training'`);
+    }
+  }
 ];
 
 /**
