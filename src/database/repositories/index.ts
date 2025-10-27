@@ -6,3 +6,5 @@ export { PlannedSessionRepository } from './PlannedSessionRepository';
 export type { PlannedSession, CreatePlannedSessionData } from './PlannedSessionRepository';
 export { SessionLogRepository } from './SessionLogRepository';
 export type { CreateSessionLogData, CompletedSessionData } from './SessionLogRepository';
+export { SessionEventRepository } from './SessionEventRepository';
+export type { SessionEvent, IntakeEventData, DiscomfortEventData, NoteEventData } from './SessionEventRepository';

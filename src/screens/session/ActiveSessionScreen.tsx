@@ -1,26 +1,36 @@
 /**
  * ActiveSessionScreen
  *
- * Active workout session screen with running timer.
- * Story 5.1: Start økt-modus
+ * Active workout session screen with running timer and intake logging.
+ * Story 5.1: Start Ã¸kt-modus
+ * Story 5.3: Log intake
  *
- * Features (MVP):
+ * Features:
  * - Large HH:MM:SS timer display
  * - Start button to begin session
  * - Session info (planned vs spontaneous)
- * - Status badge (=â Aktiv)
- * - Placeholder buttons for future features (intake/discomfort logging, end session)
+ * - Status badge (ðŸŸ¢ Aktiv)
+ * - Intake logging (planned quick log + unplanned product selector)
+ * - Next intake card (shows upcoming planned intake)
+ * - Event log (displays intake events)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, Card, Chip, Appbar, ActivityIndicator } from 'react-native-paper';
+import { Text, Button, Card, Chip, Appbar, ActivityIndicator, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SessionLogRepository } from '../../database/repositories/SessionLogRepository';
 import { PlannedSessionRepository } from '../../database/repositories/PlannedSessionRepository';
+import { SessionEventRepository } from '../../database/repositories/SessionEventRepository';
+import type { IntakeEventData } from '../../database/repositories/SessionEventRepository';
+import { FuelProduct } from '../../database/repositories/FuelProductRepository';
 import { SessionTimer } from '../../services/SessionTimer';
 import { RootStackParamList } from '../../types/navigation';
+import { FuelPlanItem } from '../../types/fuelPlan';
+import { NextIntakeCard, NextIntake } from '../../components/session/NextIntakeCard';
+import { SessionEventList } from '../../components/session/SessionEventList';
+import { ProductSelectorSheet } from '../../components/session/ProductSelectorSheet';
 
 type ActiveSessionScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -38,12 +48,24 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [plannedSessionInfo, setPlannedSessionInfo] = useState<string>('Spontan økt');
+  const [plannedSessionInfo, setPlannedSessionInfo] = useState<string>('Spontan Ã¸kt');
+
+  // Fuel plan state
+  const [fuelPlan, setFuelPlan] = useState<FuelPlanItem[]>([]);
+  const [nextIntake, setNextIntake] = useState<NextIntake | null>(null);
+  const [intakeEvents, setIntakeEvents] = useState<any[]>([]);
+
+  // Product selector state
+  const [productSelectorVisible, setProductSelectorVisible] = useState(false);
+
+  // Snackbar state
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const timerRef = useRef<SessionTimer | null>(null);
 
   useEffect(() => {
-    // Load planned session info if available
+    // Load planned session info and fuel plan if available
     if (plannedSessionId) {
       loadPlannedSessionInfo();
     }
@@ -56,11 +78,24 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     };
   }, [plannedSessionId]);
 
+  useEffect(() => {
+    // Update next intake when timer changes or events are logged
+    if (sessionStarted && fuelPlan.length > 0) {
+      updateNextIntake();
+    }
+  }, [elapsedSeconds, intakeEvents, fuelPlan, sessionStarted]);
+
   const loadPlannedSessionInfo = async () => {
     try {
       const plannedSession = await PlannedSessionRepository.getById(plannedSessionId!);
       if (plannedSession) {
-        setPlannedSessionInfo(`Planlagt økt`);
+        setPlannedSessionInfo(`Planlagt Ã¸kt`);
+
+        // Parse fuel plan from JSON
+        if (plannedSession.fuel_plan_json) {
+          const plan = JSON.parse(plannedSession.fuel_plan_json) as FuelPlanItem[];
+          setFuelPlan(plan);
+        }
       }
     } catch (err) {
       console.error('Failed to load planned session:', err);
@@ -93,9 +128,147 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       console.log(`Session started with log ID: ${logId}`);
     } catch (err) {
       console.error('Failed to start session:', err);
-      setError('Kunne ikke starte økten');
+      setError('Kunne ikke starte Ã¸kten');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Calculate next planned intake based on elapsed time and logged events
+   */
+  const updateNextIntake = () => {
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+
+    // Get all logged intake timing_minutes
+    const loggedTimings = intakeEvents
+      .map(e => {
+        const data = JSON.parse(e.data_json) as IntakeEventData;
+        return data.timing_minute;
+      })
+      .filter(t => t !== undefined);
+
+    // Flatten all timing_minutes from fuel plan
+    const allTimings: Array<{ timing: number; item: FuelPlanItem }> = [];
+    fuelPlan.forEach(item => {
+      item.timing_minutes.forEach(timing => {
+        allTimings.push({ timing, item });
+      });
+    });
+
+    // Sort by timing
+    allTimings.sort((a, b) => a.timing - b.timing);
+
+    // Find next unlogged intake (within Â±2 minutes window or future)
+    for (const { timing, item } of allTimings) {
+      if (!loggedTimings.includes(timing) && timing >= elapsedMinutes - 2) {
+        setNextIntake({
+          product_name: item.product_name,
+          timing_minute: timing,
+          carbs_per_serving: item.carbs_per_serving,
+          fuel_product_id: item.fuel_product_id,
+        });
+        return;
+      }
+    }
+
+    // No more planned intakes
+    setNextIntake(null);
+  };
+
+  /**
+   * Handle intake button tap - Quick log if planned, product selector if unplanned
+   */
+  const handleLogIntake = () => {
+    if (nextIntake) {
+      // Quick log planned intake
+      logPlannedIntake(nextIntake);
+    } else {
+      // Show product selector for unplanned intake
+      setProductSelectorVisible(true);
+    }
+  };
+
+  /**
+   * Log planned intake (quick log)
+   */
+  const logPlannedIntake = async (intake: NextIntake) => {
+    if (!sessionLogId) return;
+
+    try {
+      const intakeData: IntakeEventData = {
+        fuel_product_id: intake.fuel_product_id,
+        product_name: intake.product_name,
+        quantity: 1,
+        carbs_consumed: intake.carbs_per_serving,
+        was_planned: true,
+        timing_minute: intake.timing_minute,
+      };
+
+      await SessionEventRepository.createIntakeEvent(
+        sessionLogId,
+        elapsedSeconds,
+        intakeData
+      );
+
+      // Reload events
+      await reloadEvents();
+
+      // Show success snackbar
+      setSnackbarMessage(`âœ“ ${intake.product_name} loggfÃ¸rt (${intake.carbs_per_serving}g)`);
+      setSnackbarVisible(true);
+    } catch (err) {
+      console.error('Failed to log intake:', err);
+      setSnackbarMessage('Kunne ikke logge inntak');
+      setSnackbarVisible(true);
+    }
+  };
+
+  /**
+   * Log unplanned intake from product selector
+   */
+  const handleSelectProduct = async (product: FuelProduct) => {
+    if (!sessionLogId) return;
+
+    try {
+      const intakeData: IntakeEventData = {
+        fuel_product_id: product.id,
+        product_name: product.name,
+        quantity: 1,
+        carbs_consumed: product.carbs_per_serving,
+        was_planned: false,
+      };
+
+      await SessionEventRepository.createIntakeEvent(
+        sessionLogId,
+        elapsedSeconds,
+        intakeData
+      );
+
+      // Reload events
+      await reloadEvents();
+
+      // Show success snackbar
+      setSnackbarMessage(`âœ“ ${product.name} loggfÃ¸rt (${product.carbs_per_serving}g)`);
+      setSnackbarVisible(true);
+    } catch (err) {
+      console.error('Failed to log unplanned intake:', err);
+      setSnackbarMessage('Kunne ikke logge inntak');
+      setSnackbarVisible(true);
+    }
+  };
+
+  /**
+   * Reload intake events from database
+   */
+  const reloadEvents = async () => {
+    if (!sessionLogId) return;
+
+    try {
+      const events = await SessionEventRepository.getEventsBySession(sessionLogId, 'intake');
+      setIntakeEvents(events);
+    } catch (err) {
+      console.error('Failed to reload events:', err);
     }
   };
 
@@ -114,7 +287,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       <>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => navigation.goBack()} />
-          <Appbar.Content title="Økt-modus" />
+          <Appbar.Content title="Ã˜kt-modus" />
         </Appbar.Header>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1E88E5" />
@@ -128,7 +301,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       <>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => navigation.goBack()} />
-          <Appbar.Content title="Økt-modus" />
+          <Appbar.Content title="Ã˜kt-modus" />
         </Appbar.Header>
         <View style={styles.errorContainer}>
           <MaterialCommunityIcons name="alert-circle" size={64} color="#B00020" />
@@ -136,7 +309,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             {error}
           </Text>
           <Button mode="outlined" onPress={() => navigation.goBack()} style={styles.backButton}>
-            Gå tilbake
+            GÃ¥ tilbake
           </Button>
         </View>
       </>
@@ -147,7 +320,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     <>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Økt-modus" />
+        <Appbar.Content title="Ã˜kt-modus" />
       </Appbar.Header>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -176,10 +349,10 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
               contentStyle={styles.startButtonContent}
               labelStyle={styles.startButtonLabel}
             >
-              START ØIKT
+              START Ã˜IKT
             </Button>
             <Text variant="bodySmall" style={styles.hint}>
-              En foregrunnsvarsling vil holde økten aktiv
+              En foregrunnsvarsling vil holde Ã¸kten aktiv
             </Text>
           </View>
         ) : (
@@ -195,16 +368,31 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
               </Card.Content>
             </Card>
 
-            {/* Action Buttons (Placeholder for MVP) */}
+            {/* Next Intake Card (Story 5.3 AC1) */}
+            {fuelPlan.length > 0 && (
+              <NextIntakeCard
+                nextIntake={nextIntake}
+                elapsedMinutes={Math.floor(elapsedSeconds / 60)}
+              />
+            )}
+
+            {/* Intake Button (Story 5.3 AC2-3) */}
+            <Button
+              mode="contained"
+              icon="food-apple"
+              onPress={handleLogIntake}
+              style={styles.intakeButton}
+              contentStyle={styles.intakeButtonContent}
+              labelStyle={styles.intakeButtonLabel}
+            >
+              INNTAK
+            </Button>
+
+            {/* Event Log (Story 5.3 AC4) */}
+            {intakeEvents.length > 0 && <SessionEventList events={intakeEvents} />}
+
+            {/* Other Action Buttons (Placeholder for Story 5.4-5.5) */}
             <View style={styles.actionsContainer}>
-              <Button
-                mode="outlined"
-                icon="food-apple"
-                style={styles.actionButton}
-                disabled
-              >
-                Logg inntak
-              </Button>
               <Button
                 mode="outlined"
                 icon="alert"
@@ -220,16 +408,32 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
                 buttonColor="#B00020"
                 disabled
               >
-                Avslutt økt
+                Avslutt Ã¸kt
               </Button>
             </View>
 
             <Text variant="bodySmall" style={styles.placeholderNote}>
-              Loggefunksjoner kommer i Story 5.3-5.5
+              Ubehag og avslutt kommer i Story 5.4-5.5
             </Text>
           </>
         )}
       </ScrollView>
+
+      {/* Product Selector Sheet (Story 5.3 AC3) */}
+      <ProductSelectorSheet
+        visible={productSelectorVisible}
+        onDismiss={() => setProductSelectorVisible(false)}
+        onSelectProduct={handleSelectProduct}
+      />
+
+      {/* Snackbar for feedback (Story 5.3 AC2) */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={2000}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </>
   );
 };
@@ -315,19 +519,30 @@ const styles = StyleSheet.create({
     color: '#1E88E5',
     fontVariant: ['tabular-nums'],
   },
+  intakeButton: {
+    marginBottom: 16,
+  },
+  intakeButtonContent: {
+    paddingVertical: 16,
+  },
+  intakeButtonLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   actionsContainer: {
     gap: 12,
+    marginTop: 16,
   },
   actionButton: {
     marginBottom: 8,
   },
   endButton: {
-    marginTop: 16,
+    marginTop: 8,
   },
   placeholderNote: {
     textAlign: 'center',
     color: '#999',
-    marginTop: 24,
+    marginTop: 16,
     fontStyle: 'italic',
   },
 });
