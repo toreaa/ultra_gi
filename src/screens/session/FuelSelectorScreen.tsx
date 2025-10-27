@@ -10,15 +10,16 @@ import { View, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-na
 import { Text, Appbar, Card, Button, IconButton, ProgressBar, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { FuelProduct, FuelProductRepository } from '../../database/repositories/FuelProductRepository';
 import { PlannedSessionRepository } from '../../database/repositories/PlannedSessionRepository';
 import { FuelPlan, FuelPlanItem } from '../../types/fuelPlan';
 import { generateFuelPlan, generateTiming, recalculatePlan } from '../../services/fuelPlanner';
-import { ProgramStackParamList } from '../../types/navigation';
+import { ProgramStackParamList, RootStackParamList } from '../../types/navigation';
 
-type FuelSelectorScreenProps = NativeStackScreenProps<
-  ProgramStackParamList,
-  'FuelSelector'
+type FuelSelectorScreenProps = CompositeScreenProps<
+  NativeStackScreenProps<ProgramStackParamList, 'FuelSelector'>,
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 export const FuelSelectorScreen: React.FC<FuelSelectorScreenProps> = ({
@@ -134,17 +135,8 @@ export const FuelSelectorScreen: React.FC<FuelSelectorScreenProps> = ({
           {
             text: 'Start økt',
             onPress: () => {
-              // Try to navigate to SessionActive (Epic 5)
-              // If not implemented, show placeholder
-              try {
-                // @ts-ignore - SessionActive may not exist yet
-                navigation.navigate('SessionActive', { sessionId: plannedSessionId });
-              } catch (error) {
-                // Epic 5 not implemented yet - show placeholder
-                setSnackbarMessage('Økt-modus kommer i Epic 5');
-                setSnackbarVisible(true);
-                setTimeout(() => navigation.goBack(), 1500);
-              }
+              // Navigate to ActiveSessionScreen (Story 5.1)
+              navigation.navigate('ActiveSession', { plannedSessionId });
             },
           },
         ]

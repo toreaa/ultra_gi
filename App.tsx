@@ -5,16 +5,22 @@
  * - Database initialization
  * - Onboarding flow vs Main app routing
  * - Global providers (Navigation, Paper)
+ * - Root-level screens (ActiveSession, etc.)
  */
 
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OnboardingNavigator } from './src/navigation/OnboardingNavigator';
 import { MainTabNavigator } from './src/navigation/MainTabNavigator';
+import { ActiveSessionScreen } from './src/screens/session/ActiveSessionScreen';
 import { useUserStore } from './src/store/userStore';
 import { initDatabase } from './src/database/index';
+import { RootStackParamList } from './src/types/navigation';
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 function AppContent() {
   const { onboardingCompleted, isLoading, initialize } = useUserStore();
@@ -48,8 +54,13 @@ function AppContent() {
     return <OnboardingNavigator />;
   }
 
-  // Main app with tab navigation
-  return <MainTabNavigator />;
+  // Main app with root stack navigator
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Main" component={MainTabNavigator} />
+      <RootStack.Screen name="ActiveSession" component={ActiveSessionScreen} />
+    </RootStack.Navigator>
+  );
 }
 
 export default function App() {

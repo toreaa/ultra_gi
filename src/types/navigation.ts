@@ -4,7 +4,8 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
   Main: NavigatorScreenParams<MainTabParamList>;
-  SessionActive: { sessionId: number };
+  ActiveSession: { plannedSessionId?: number }; // Story 5.1: Optional for spontaneous sessions
+  SessionActive: { sessionId: number }; // Legacy, kept for backward compatibility
   SessionAnalysis: { sessionId: number };
 };
 
