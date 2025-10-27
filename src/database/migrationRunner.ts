@@ -273,16 +273,25 @@ const MIGRATIONS: Migration[] = [
         'Based on Jeukendrup (2014) gut training protocols'
       ]);
 
-      // Seed program sessions
+      // Get the program ID (IMPORTANT: Don't assume ID=1)
+      const program = await db.getFirstAsync<{ id: number }>(
+        `SELECT id FROM programs WHERE name = '4-Week Base Carb Training'`
+      );
+
+      if (!program) {
+        throw new Error('Failed to create seed program in migration 1');
+      }
+
+      // Seed program sessions with correct program_id
       const sessions = [
-        [1, 1, 1, 60, 30, 'Zone 2', 'Start easy, focus on tolerance'],
-        [1, 1, 2, 60, 30, 'Zone 2', 'Repeat Week 1 Session 1'],
-        [1, 2, 1, 75, 45, 'Zone 2-3', 'Increase duration and carb rate'],
-        [1, 2, 2, 75, 45, 'Zone 2-3', 'Repeat Week 2 Session 1'],
-        [1, 3, 1, 90, 60, 'Zone 2-3', 'Target race pace carb intake'],
-        [1, 3, 2, 90, 60, 'Zone 2-3', 'Repeat Week 3 Session 1'],
-        [1, 4, 1, 120, 60, 'Zone 2-3', 'Long session at race pace fueling'],
-        [1, 4, 2, 120, 60, 'Zone 2-3', 'Final long session'],
+        [program.id, 1, 1, 60, 30, 'Zone 2', 'Start easy, focus on tolerance'],
+        [program.id, 1, 2, 60, 30, 'Zone 2', 'Repeat Week 1 Session 1'],
+        [program.id, 2, 1, 75, 45, 'Zone 2-3', 'Increase duration and carb rate'],
+        [program.id, 2, 2, 75, 45, 'Zone 2-3', 'Repeat Week 2 Session 1'],
+        [program.id, 3, 1, 90, 60, 'Zone 2-3', 'Target race pace carb intake'],
+        [program.id, 3, 2, 90, 60, 'Zone 2-3', 'Repeat Week 3 Session 1'],
+        [program.id, 4, 1, 120, 60, 'Zone 2-3', 'Long session at race pace fueling'],
+        [program.id, 4, 2, 120, 60, 'Zone 2-3', 'Final long session'],
       ];
 
       for (const session of sessions) {
