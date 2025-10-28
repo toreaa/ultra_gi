@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Text, Button, Card, Divider } from 'react-native-paper';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -37,6 +37,7 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
   const [startIntensity, setStartIntensity] = useState<number>(30);
   const [loading, setLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecommendation();
@@ -67,8 +68,16 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
 
     try {
       setIsStarting(true);
+      setError(null);
+
+      console.log('[ProgramSuggestion] Starting program...', {
+        programId: recommendation.program.id,
+        goal: route.params.goal,
+        giIssue: route.params.giIssue,
+      });
 
       // Create user with onboarding data
+      console.log('[ProgramSuggestion] Creating user...');
       await completeOnboarding({
         primary_goal: route.params.goal,
         primary_gi_issue: route.params.giIssue,
@@ -76,26 +85,46 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
 
       // Get the created user's ID
       const currentUser = useUserStore.getState().user;
+      console.log('[ProgramSuggestion] User created:', currentUser?.id);
+
       if (!currentUser) {
-        throw new Error('User not created');
+        throw new Error('Bruker ble ikke opprettet. Vennligst prøv igjen.');
       }
 
       // Start the program in database
+      console.log('[ProgramSuggestion] Starting program for user:', currentUser.id);
       await ProgramRepository.startProgram(recommendation.program.id, currentUser.id);
 
+      console.log('[ProgramSuggestion] Program started successfully, navigating to ProfileSetup');
       // Navigate to ProfileSetup (final onboarding step)
       navigation.navigate('ProfileSetup');
     } catch (error) {
-      console.error('Failed to start program:', error);
+      console.error('[ProgramSuggestion] Failed to start program:', error);
+
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Kunne ikke starte programmet. Vennligst prøv igjen.';
+
+      setError(errorMessage);
       setIsStarting(false);
-      // TODO: Show error dialog to user
+
+      // Show error alert
+      Alert.alert(
+        'Feil ved oppstart',
+        errorMessage + '\n\nHvis problemet vedvarer, prøv å avinstallere og installere appen på nytt.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
   const handleViewAllPrograms = () => {
     // TODO: Navigate to ProgramListScreen (Epic 3)
-    // For now, this is a placeholder
-    console.log('View all programs - coming in Epic 3');
+    // For now, show a helpful message
+    Alert.alert(
+      'Kommer snart',
+      'Muligheten til å se alle programmer kommer i en fremtidig versjon. For nå anbefaler vi det programmet som passer best for ditt mål.',
+      [{ text: 'OK' }]
+    );
   };
 
   if (loading) {
@@ -162,6 +191,16 @@ export const ProgramSuggestionScreen: React.FC<ProgramSuggestionScreenProps> = (
             <Text variant="bodyMedium">{recommendation.reasoning}</Text>
           </Card.Content>
         </Card>
+
+        {error && (
+          <Card style={[styles.card, styles.errorCard]}>
+            <Card.Content>
+              <Text variant="bodyMedium" style={styles.errorText}>
+                ⚠️ {error}
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
 
         <Button
           mode="contained"
@@ -232,5 +271,13 @@ const styles = StyleSheet.create({
   },
   button: {
     marginVertical: 8,
+  },
+  errorCard: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#F44336',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#C62828',
   },
 });
