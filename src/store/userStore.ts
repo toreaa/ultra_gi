@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import * as SQLite from 'expo-sqlite';
 import type { User } from '../types/database';
 
-const db = SQLite.openDatabaseSync('gidiary.db');
+// CRITICAL: Must use the same database name as the rest of the app
+const db = SQLite.openDatabaseSync('gi_diary.db');
 
 interface UserState {
   user: User | null;

@@ -19,7 +19,8 @@
 import * as Notifications from 'expo-notifications';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('gidiary.db');
+// CRITICAL: Must use the same database name as the rest of the app
+const db = SQLite.openDatabaseSync('gi_diary.db');
 
 export interface SessionTimerConfig {
   sessionLogId: number;
